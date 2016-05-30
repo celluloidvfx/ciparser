@@ -1,0 +1,13 @@
+name: ciparser
+civersion: 1
+
+build:
+    active: true
+    output: ciparser
+    language: go
+    goversion: 1.6.1
+    arch: amd64
+    platform: linux
+    musl: true
+    deps:
+
