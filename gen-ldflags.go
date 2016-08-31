@@ -13,23 +13,77 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package ciparser
+package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
+
+	b64 "encoding/base64"
 )
 
-func GenLDFlags(version string) string {
+func GenLDFlags(cfg *CiConfig) string {
+	timestamp := time.Now().UTC().Format(time.RFC3339)
+	c := cfg.GetValueName("cvars")
+
 	var ldflagsStr string
-	ldflagsStr = "-X main.appVersion=" + version + " "
-	ldflagsStr = ldflagsStr + "-X main.appReleaseTag=" + releaseTag(version) + " "
+	ldflagsStr = "-X main.appVersion=" + timestamp + " "
+	ldflagsStr = ldflagsStr + "-X main.appReleaseTag=" + releaseTag(timestamp) + " "
 	ldflagsStr = ldflagsStr + "-X main.appCommitID=" + commitID() + " "
 	ldflagsStr = ldflagsStr + "-X main.appShortCommitID=" + commitID()[:12] + " "
+	ldflagsStr = ldflagsStr + "-X main.appBranch=" + branch() + " "
+
+	for _, v := range c.([]Customvars) {
+
+		if os.Getenv(strings.ToUpper(v.Name)) != "" {
+			v.Path = os.Getenv(strings.ToUpper(v.Name))
+		}
+
+		if v.Value != "" && v.Path == "" {
+			ldflagsStr = ldflagsStr + "-X main.app" + v.Name + "=" + b64.StdEncoding.EncodeToString([]byte(v.Value)) + " "
+		}
+		if v.Value == "" && v.Path != "" {
+			ldflagsStr = ldflagsStr + "-X main.app" + v.Name + "=" + readFileContent(v) + " "
+		}
+		if v.Value != "" && v.Path != "" {
+			fmt.Println("Error reading customvars path and value are mutual exclusive")
+			os.Exit(1)
+		}
+
+	}
+
 	ldflagsStr = ldflagsStr + "-linkmode external -extldflags \"-static\" -s -w"
 	return ldflagsStr
+}
+func readFileContent(v Customvars) string {
+	var (
+		out []byte
+		e   error
+	)
+	if out, e = ioutil.ReadFile(v.Path); e != nil {
+		fmt.Fprintln(os.Stderr, "Error reading content "+string(out)+":", e)
+		os.Exit(1)
+	}
+	return b64.StdEncoding.EncodeToString(out)
+}
+
+func branch() string {
+	// git rev-parse --abbrev-ref HEAD
+	var (
+		branch []byte
+		e      error
+	)
+	cmdName := "git"
+	cmdArgs := []string{"rev-parse", "--abbrev-ref", "HEAD"}
+	if branch, e = exec.Command(cmdName, cmdArgs...).Output(); e != nil {
+		fmt.Fprintln(os.Stderr, "Error generating git branch: ", e)
+		os.Exit(1)
+	}
+	return strings.TrimSpace(string(branch))
 }
 
 // genReleaseTag prints release tag to the console for easy git tagging.

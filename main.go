@@ -1,5 +1,3 @@
-// +build ignore
-
 /*
  * Johannes Amorosa, (C) 2016
  *
@@ -19,53 +17,52 @@
 package main
 
 import (
-	"errors"
 	"fmt"
-	"github.com/codegangsta/cli"
-	ci "gitlab/dev-op/ciparser"
 	"os"
-	"time"
+
+	"github.com/urfave/cli"
 )
 
-var appVersion, appReleaseTag, appShortCommitID string
+const apiversion = "1"
+
+var appVersion, appReleaseTag, appShortCommitID, appBranch, Path string
+var Override bool
 
 func main() {
+
 	app := cli.NewApp()
 	app.Name = "Celluloid YamlParser"
-	app.Usage = "This Application reads cell-ci.yamls"
+	app.Usage = "This Application reads cell-ci.yaml files, manages build environments."
 	app.Author = "Johannes Amorosa"
 	app.Email = "johannesa@celluloid-vfx.com"
-	app.Version = "XXX" + "\n" + mainVersion()
-
+	app.Version = mainVersion()
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  "p, path",
-			Value: "cell-ci.yaml",
-			Usage: "Path to input file",
+			Name:        "p, path",
+			Value:       "cell-ci.yaml",
+			Usage:       "Path to input file",
+			Destination: &Path,
 		},
+		/*cli.BoolFlag{
+			Name:        "o, override",
+			Usage:       "Override api mismatch",
+			Destination: &Override,
+		},*/
 	}
-	//a := os.Args[1:]
-
 	app.Commands = []cli.Command{
-		// One User query
 		{
 			Name:  "get",
-			Usage: "Fetches a value",
-			Before: func(c *cli.Context) error {
-				if c.NArg() == 0 {
-					return errors.New("No value provided")
-				}
-				return nil
-			},
+			Usage: "Fetches a value from cell-ci.yaml",
 			Action: func(c *cli.Context) error {
-				cfg, err := ci.ReadConfig(c.String("path"))
+				cfg, err := ReadConfig(Path)
 				switch {
 				case err == nil:
 					a := c.Args().First()
-					fmt.Println(cfg.GetValueName(a))
+					b := cfg.GetValueName(a)
+					fmt.Println(b.(string))
 					return cli.NewExitError("", 0)
 				default:
-					return cli.NewExitError("", 1)
+					return cli.NewExitError("Can't read file: "+Path, 1)
 				}
 
 			},
@@ -74,57 +71,148 @@ func main() {
 			Name:  "ldflags",
 			Usage: "Create ldflags",
 			Action: func(c *cli.Context) error {
-				fmt.Println(ci.GenLDFlags(time.Now().UTC().Format(time.RFC3339)))
-				return cli.NewExitError("", 0)
+				cfg, err := ReadConfig(Path)
+				switch {
+				case err == nil:
+					fmt.Println(GenLDFlags(cfg))
+					return cli.NewExitError("", 0)
+				default:
+					return cli.NewExitError("Can't read file: "+Path, 1)
+				}
 			},
 		},
+		{
+			Name:  "check",
+			Usage: "Check for build environment",
+			Action: func(c *cli.Context) error {
+				if !civersion() {
+					fmt.Println("Ciparser Api Version mismatch this project uses apiversion " + apiversion)
+				}
+
+				cfg, err := ReadConfig(Path)
+				switch {
+				case err == nil:
+					// Go path
+					if gopath, e := getGoPath(); e != nil {
+						return cli.NewExitError("Can't get gopath", 1)
+					} else {
+						fmt.Println("Found GOPATH: " + gopath)
+					}
+
+					// Go version
+					if v, e := getInstalledGoVersion(); e != nil {
+						return cli.NewExitError("Can't determine go version", 1)
+					} else {
+						n := cfg.GetValueName("goversion")
+						if n.(string) != v {
+							return cli.NewExitError("Go Version mismatch: "+v+" is installed, but need "+n.(string), 1)
+						} else {
+							fmt.Println("Found Go Version: " + v)
+						}
+					}
+
+					return cli.NewExitError("", 0)
+				default:
+					return cli.NewExitError("Can't read file: "+Path, 1)
+				}
+			},
+		},
+		{
+			Name:  "go",
+			Usage: "Handle go environment",
+			Action: func(c *cli.Context) error {
+				cli.ShowSubcommandHelp(c)
+				return cli.NewExitError("", 0)
+			},
+			Subcommands: []cli.Command{
+				{
+					Name:  "path",
+					Usage: "Fetches go path",
+					Action: func(c *cli.Context) error {
+						if v, e := getGoPath(); e != nil {
+							return cli.NewExitError("GOPATH not set", 1)
+						} else {
+							fmt.Println(v)
+							return cli.NewExitError("", 0)
+						}
+					},
+				},
+				{
+					Name:  "version",
+					Usage: "Fetches needed go version string",
+					Action: func(c *cli.Context) error {
+						if v, e := getInstalledGoVersion(); e != nil {
+							return cli.NewExitError("GOPATH not set or go executable not found", 1)
+						} else {
+							fmt.Println(v)
+							return cli.NewExitError("", 0)
+						}
+					},
+				},
+				{
+					Name:  "bin",
+					Usage: "Fetches path of go executable",
+					Action: func(c *cli.Context) error {
+						if v, e := getGoBin(); e != nil {
+							return cli.NewExitError("Go executable not found", 1)
+						} else {
+							fmt.Println(v)
+							return cli.NewExitError("", 0)
+						}
+					},
+				},
+				{
+					Name:  "deps",
+					Usage: "Installs project dependencies",
+					Action: func(c *cli.Context) error {
+						cfg, err := ReadConfig(Path)
+						switch {
+						case err == nil:
+							d := cfg.GetValueName("deps")
+							for _, v := range d.([]string) {
+								fmt.Printf("Installing: " + v + " ... ")
+								if e := installGoDeps(v); e != nil {
+									fmt.Println(e)
+									return cli.NewExitError("Failed to install go dependency", 1)
+								} else {
+									fmt.Printf("Done!\n")
+								}
+							}
+							return cli.NewExitError("", 0)
+						default:
+							return cli.NewExitError("Can't read config: "+Path, 1)
+						}
+					},
+				},
+			},
+		},
+	}
+
+	app.Action = func(c *cli.Context) error {
+		cli.ShowAppHelp(c)
+		return cli.NewExitError("", 0)
 	}
 	app.Run(os.Args)
 }
 
 func mainVersion() string {
 	s := ""
-	s = s + "Version: " + appVersion + "\n"
+	s = s + appVersion + "\n"
 	s = s + "Release-Tag: " + appReleaseTag + "\n"
 	s = s + "Commit-ID: " + appShortCommitID + "\n"
+	s = s + "Branch: " + appBranch + "\n"
+	s = s + "CI API version: " + apiversion + "\n"
 	return s
 }
 
-//fmt.Println(fetchFieldinYaml(a[0], a[1]))
-/*
-var CI *CiConfig
-var B *Build
-
-func ReadConfig(path string) (*CiConfig, error) {
-	b, err := ioutil.ReadFile(path)
-
-	err = yaml.Unmarshal(b, &CI)
-
-	return CI, err
-}
-
-func fetchFieldinYaml(path, key string) string {
-	CI, err := ReadConfig(path)
-	if err != nil {
-		os.Exit(1)
+func civersion() bool {
+	cfg, err := ReadConfig(Path)
+	switch {
+	case err == nil:
+		cv := cfg.GetValueName("civersion")
+		if cv == apiversion {
+			return true
+		}
 	}
-	B := CI.Build
-
-	r := reflect.ValueOf(B)
-	f := reflect.Indirect(r).FieldByName(strings.Title(key))
-
-	return f.String()
+	return false
 }
-
-func main() {
-
-	a := os.Args[1:]
-
-	if len(os.Args) > 1 {
-		fmt.Println(fetchFieldinYaml(a[0], a[1]))
-		os.Exit(0)
-	}
-
-	os.Exit(1)
-}
-*/

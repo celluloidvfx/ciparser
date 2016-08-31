@@ -5,9 +5,20 @@ build:
     active: true
     output: ciparser
     language: go
-    goversion: 1.6.1
+    goversion: 1.7
     arch: amd64
     platform: linux
     musl: true
     deps:
+      - "github.com/urfave/cli"
+      - "github.com/ghodss/yaml"
+    customvars:
+        - name: clientCert
+          path: "/home/local/CELLULOIDVFX/johannesa/Desktop/dev/go/src/gitlab/johannesa/fsfilelinker/cell-ls-24.celluloidvfx.inc.crt"
+        - name: clientKey
+          path: "/home/local/CELLULOIDVFX/johannesa/Desktop/dev/go/src/gitlab/johannesa/fsfilelinker/cell-ls-24.celluloidvfx.inc.key"
+        - name: caCert
+          path: "/home/local/CELLULOIDVFX/johannesa/Desktop/dev/go/src/gitlab/johannesa/fsfilelinker/ca.pem"
+        - name: serverList
+          value: "cell-auth-01.celluloidvfx.inc:9999+cell-auth-02.celluloidvfx.inc:9999+cell-auth-03.celluloidvfx.inc:9999"
 
