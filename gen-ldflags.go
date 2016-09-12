@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package main
 
 import (
@@ -26,9 +27,9 @@ import (
 	b64 "encoding/base64"
 )
 
-func GenLDFlags(cfg *CiConfig) string {
+func genLDFlags(cfg *ciConfig) string {
 	timestamp := time.Now().UTC().Format(time.RFC3339)
-	c := cfg.GetValueName("cvars")
+	c := cfg.getValueName("cvars")
 
 	var ldflagsStr string
 	ldflagsStr = "-X main.appVersion=" + timestamp + " "
@@ -37,7 +38,7 @@ func GenLDFlags(cfg *CiConfig) string {
 	ldflagsStr = ldflagsStr + "-X main.appShortCommitID=" + commitID()[:12] + " "
 	ldflagsStr = ldflagsStr + "-X main.appBranch=" + branch() + " "
 
-	for _, v := range c.([]Customvars) {
+	for _, v := range c.([]customvars) {
 
 		if os.Getenv(strings.ToUpper(v.Name)) != "" {
 			v.Path = os.Getenv(strings.ToUpper(v.Name))
@@ -59,7 +60,7 @@ func GenLDFlags(cfg *CiConfig) string {
 	ldflagsStr = ldflagsStr + "-linkmode external -extldflags \"-static\" -s -w"
 	return ldflagsStr
 }
-func readFileContent(v Customvars) string {
+func readFileContent(v customvars) string {
 	var (
 		out []byte
 		e   error
@@ -79,6 +80,7 @@ func branch() string {
 	)
 	cmdName := "git"
 	cmdArgs := []string{"rev-parse", "--abbrev-ref", "HEAD"}
+	// #nosec
 	if branch, e = exec.Command(cmdName, cmdArgs...).Output(); e != nil {
 		fmt.Fprintln(os.Stderr, "Error generating git branch: ", e)
 		os.Exit(1)
@@ -108,6 +110,7 @@ func commitID() string {
 	)
 	cmdName := "git"
 	cmdArgs := []string{"log", "--format=%H", "-n1"}
+	// #nosec
 	if commit, e = exec.Command(cmdName, cmdArgs...).Output(); e != nil {
 		fmt.Fprintln(os.Stderr, "Error generating git commit-id: ", e)
 		os.Exit(1)

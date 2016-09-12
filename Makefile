@@ -5,11 +5,11 @@ APP_NAME := $(shell ciparser get output)
 
 # Musl
 MUSL := $(shell ciparser get musl)
-ifeq ($(MUSL), "true")
-	CC := /usr/local/musl/bin/musl-gcc
+ifeq ($(MUSL), true)
+	COMPILER := '/usr/local/musl/bin/musl-gcc'
 else
-ifeq ($(MUSL), "false")
-	CC := $(shell which gcc)
+ifeq ($(MUSL),)
+	COMPILER := '/usr/bin/gcc'
 endif
 endif
 
@@ -20,64 +20,33 @@ PWD := $(shell pwd)
 GOPATH := $(shell ciparser go path)
 HOST := $(shell ciparser get platform)
 
-all: install
+all: gomake-all
+
+gomake-all: getdeps verifiers build compress
 
 getdeps:
-	@go get -u gitlab.celluloidvfx.inc/dev-op/golint && echo "Installed golint"
-	@go get -u gitlab.celluloidvfx.inc/dev-op/gocyclo && echo "Installed gocyclo"
-	@go get -u gitlab.celluloidvfx.inc/dev-op/go-misc/deadcode && echo "Installed deadcode"
-	@go get -u gitlab.celluloidvfx.inc/dev-op/misspell/cmd/misspell && echo "Installed misspell"
-	@go get -u honnef.co/go/simple/cmd/gosimple && echo "Installed gosimple"
-	@ciparser go deps
-verifiers: vet fmt simple lint cyclo spelling
-
-vet:
 	@echo "Running $@:"
-	@GO15VENDOREXPERIMENT=1 go tool vet -all *.go
-	@GO15VENDOREXPERIMENT=1 go tool vet -shadow=true *.go
+	@${GOPATH}/bin/ciparser go deps
 
-fmt:
+verifiers: gometalinter spelling test
+
+gometalinter:
 	@echo "Running $@:"
-	@GO15VENDOREXPERIMENT=1 gofmt -s -l *.go
-
-simple:
-	@echo "Running $@:"
-	@GO15VENDOREXPERIMENT=1 gosimple
-
-lint:
-	@echo "Running $@:"
- 	@GO15VENDOREXPERIMENT=1 ${GOPATH}/bin/golint *.go
-
-cyclo:
-	@echo "Running $@:"
-	@GO15VENDOREXPERIMENT=1 ${GOPATH}/bin/gocyclo -over 65 *.go
-
-build: getdeps verifiers
-
-deadcode:
-	@GO15VENDOREXPERIMENT=1 ${GOPATH}/bin/deadcode
+	@${GOPATH}/bin/gometalinter --cyclo-over=12 --errors ./...
 
 spelling:
-	@GO15VENDOREXPERIMENT=1 ${GOPATH}/bin/misspell *.go *.rm
-
-check:
 	@echo "Running $@:"
-	@ciparser check
+	@${GOPATH}/bin/misspell *.go *.md *.MD
 
-test: build
- 	@echo "Running $@:"
- 	@GO15VENDOREXPERIMENT=1 go test .
+test:
+	@echo "Running $@:"
+	@/usr/bin/go test --cover ./...
 
-gomake-all: build
-	@echo "Installing to $(GOPATH)/bin/$(APP_NAME)"
-	@GO15VENDOREXPERIMENT=1 go build --ldflags $(BUILD_LDFLAGS) -o $(GOPATH)/bin/$(APP_NAME)
+build:
+	@echo "Running $@:"
+	@echo "Using Linker: $(COMPILER)"
+	@CC=$(COMPILER) /usr/bin/go build --ldflags $(BUILD_LDFLAGS) -o $(GOPATH)/bin/$(APP_NAME) && echo "Installing to $(GOPATH)/bin/$(APP_NAME)"
 
-install: gomake-all
-
-# clean:
-# 	@echo "Cleaning up all the generated files:"
-# 	@rm -fv minio minio.test cover.out
-# 	@find . -name '*.test' | xargs rm -fv
-# 	@rm -rf isa-l
-# 	@rm -rf build
-# 	@rm -rf release
+compress:
+	@echo "Running $@:"
+	@upx --brute $(GOPATH)/bin/$(APP_NAME) && echo "Compressed to $(GOPATH)/bin/$(APP_NAME)"

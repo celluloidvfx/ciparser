@@ -17,37 +17,16 @@
 package main
 
 import (
-	"os/exec"
-	"strings"
+	"github.com/urfave/cli"
 )
 
-func plattform() (string, error) {
-	// uname -sm
-	var (
-		plattform []byte
-		e         error
-	)
-	cmdName := "uname"
-	cmdArgs := []string{"-s"}
-	// #nosec
-	if plattform, e = exec.Command(cmdName, cmdArgs...).Output(); e != nil {
-		return "", e
+func registerFlags(app *cli.App) {
+	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:        "p, path",
+			Value:       "cell-ci.yaml",
+			Usage:       "path to input file",
+			Destination: &path,
+		},
 	}
-	return strings.TrimSpace(string(plattform)), nil
 }
-
-/*
-func bitOS() (string, error) {
-	// uname -sm
-	var (
-		bit []byte
-		e   error
-	)
-	cmdName := "uname"
-	cmdArgs := []string{"-m"}
-	if bit, e = exec.Command(cmdName, cmdArgs...).Output(); e != nil {
-		return "", e
-	}
-	return strings.TrimSpace(string(bit)), nil
-}
-*/

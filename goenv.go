@@ -24,11 +24,6 @@ import (
 	"strings"
 )
 
-type Goenv struct {
-	Path    string
-	Version string
-}
-
 func getGoPath() (string, error) {
 	p := os.Getenv("GOPATH")
 	if p != "" {
@@ -44,11 +39,12 @@ func getInstalledGoVersion() (string, error) {
 	)
 	cmdName := "go"
 	cmdArgs := []string{"version"}
+	// #nosec
 	if v, e = exec.Command(cmdName, cmdArgs...).Output(); e != nil {
 		return "", e
 	}
 	s := strings.Trim(strings.Split(string(v), " ")[2], "go")
-	return strings.TrimSpace(string(s)), nil
+	return strings.TrimSpace(s), nil
 }
 
 func getGoBin() (string, error) {
@@ -58,6 +54,7 @@ func getGoBin() (string, error) {
 	)
 	cmdName := "which"
 	cmdArgs := []string{"go"}
+	// #nosec
 	if v, e = exec.Command(cmdName, cmdArgs...).Output(); e != nil {
 		return "", e
 	}
@@ -72,9 +69,9 @@ func installGoDeps(d string) error {
 
 	cmdName := "go"
 	cmdArgs := []string{"get", d}
+	// #nosec
 	if _, e = exec.Command(cmdName, cmdArgs...).Output(); e != nil {
 		return e
-	} else {
-		return nil
 	}
+	return nil
 }

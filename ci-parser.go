@@ -22,13 +22,13 @@ import (
 	"github.com/ghodss/yaml"
 )
 
-type CiConfig struct {
+type ciConfig struct {
 	Name      string `json:"name"`
 	Civersion string `json:"civersion"`
-	Build     Build  `json:"build"`
+	Build     build  `json:"build"`
 }
 
-type Build struct {
+type build struct {
 	Active    bool         `json:"active"`
 	Output    string       `json:"output"`
 	Language  string       `json:"language"`
@@ -37,20 +37,19 @@ type Build struct {
 	Goos      string       `json:"platform"`
 	Musl      bool         `json:"musl"`
 	Deps      []string     `json:"deps"`
-	Cvars     []Customvars `json:"customvars"`
-	//Cvars     map[string]string `json:"customvars"`
+	Cvars     []customvars `json:"customvars"`
 }
 
-type Customvars struct {
+type customvars struct {
 	Name  string `json:"name"`
 	Path  string `json:"path"`
 	Value string `json:"value"`
 }
 
-var GetTasks = []string{"name", "civersion", "active", "output", "language", "goversion", "musl"}
+var getTasks = []string{"name", "civersion", "active", "output", "language", "goversion", "musl"}
 
-func ReadConfig(path string) (*CiConfig, error) {
-	var ci *CiConfig
+func readConfig(path string) (*ciConfig, error) {
+	var ci *ciConfig
 	b, err := ioutil.ReadFile(path)
 
 	if err == nil {
@@ -59,7 +58,7 @@ func ReadConfig(path string) (*CiConfig, error) {
 	return ci, err
 }
 
-func (c CiConfig) GetValueName(value string) interface{} {
+func (c ciConfig) getValueName(value string) interface{} {
 	switch {
 	// Ciconfig
 	case value == "name":
@@ -94,7 +93,7 @@ func (c CiConfig) GetValueName(value string) interface{} {
 	}
 
 	r := "Usage: "
-	for _, t := range GetTasks {
+	for _, t := range getTasks {
 		r = r + t + " "
 	}
 	return r

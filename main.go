@@ -17,7 +17,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/urfave/cli"
@@ -25,8 +24,7 @@ import (
 
 const apiversion = "1"
 
-var appVersion, appReleaseTag, appShortCommitID, appBranch, Path string
-var Override bool
+var appVersion, appReleaseTag, appShortCommitID, appBranch, path string
 
 func main() {
 
@@ -36,163 +34,16 @@ func main() {
 	app.Author = "Johannes Amorosa"
 	app.Email = "johannesa@celluloid-vfx.com"
 	app.Version = mainVersion()
-	app.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name:        "p, path",
-			Value:       "cell-ci.yaml",
-			Usage:       "Path to input file",
-			Destination: &Path,
-		},
-		/*cli.BoolFlag{
-			Name:        "o, override",
-			Usage:       "Override api mismatch",
-			Destination: &Override,
-		},*/
-	}
-	app.Commands = []cli.Command{
-		{
-			Name:  "get",
-			Usage: "Fetches a value from cell-ci.yaml",
-			Action: func(c *cli.Context) error {
-				cfg, err := ReadConfig(Path)
-				switch {
-				case err == nil:
-					a := c.Args().First()
-					b := cfg.GetValueName(a)
-					fmt.Println(b.(string))
-					return cli.NewExitError("", 0)
-				default:
-					return cli.NewExitError("Can't read file: "+Path, 1)
-				}
 
-			},
-		},
-		{
-			Name:  "ldflags",
-			Usage: "Create ldflags",
-			Action: func(c *cli.Context) error {
-				cfg, err := ReadConfig(Path)
-				switch {
-				case err == nil:
-					fmt.Println(GenLDFlags(cfg))
-					return cli.NewExitError("", 0)
-				default:
-					return cli.NewExitError("Can't read file: "+Path, 1)
-				}
-			},
-		},
-		{
-			Name:  "check",
-			Usage: "Check for build environment",
-			Action: func(c *cli.Context) error {
-				if !civersion() {
-					fmt.Println("Ciparser Api Version mismatch this project uses apiversion " + apiversion)
-				}
+	registerFlags(app)
 
-				cfg, err := ReadConfig(Path)
-				switch {
-				case err == nil:
-					// Go path
-					if gopath, e := getGoPath(); e != nil {
-						return cli.NewExitError("Can't get gopath", 1)
-					} else {
-						fmt.Println("Found GOPATH: " + gopath)
-					}
-
-					// Go version
-					if v, e := getInstalledGoVersion(); e != nil {
-						return cli.NewExitError("Can't determine go version", 1)
-					} else {
-						n := cfg.GetValueName("goversion")
-						if n.(string) != v {
-							return cli.NewExitError("Go Version mismatch: "+v+" is installed, but need "+n.(string), 1)
-						} else {
-							fmt.Println("Found Go Version: " + v)
-						}
-					}
-
-					return cli.NewExitError("", 0)
-				default:
-					return cli.NewExitError("Can't read file: "+Path, 1)
-				}
-			},
-		},
-		{
-			Name:  "go",
-			Usage: "Handle go environment",
-			Action: func(c *cli.Context) error {
-				cli.ShowSubcommandHelp(c)
-				return cli.NewExitError("", 0)
-			},
-			Subcommands: []cli.Command{
-				{
-					Name:  "path",
-					Usage: "Fetches go path",
-					Action: func(c *cli.Context) error {
-						if v, e := getGoPath(); e != nil {
-							return cli.NewExitError("GOPATH not set", 1)
-						} else {
-							fmt.Println(v)
-							return cli.NewExitError("", 0)
-						}
-					},
-				},
-				{
-					Name:  "version",
-					Usage: "Fetches needed go version string",
-					Action: func(c *cli.Context) error {
-						if v, e := getInstalledGoVersion(); e != nil {
-							return cli.NewExitError("GOPATH not set or go executable not found", 1)
-						} else {
-							fmt.Println(v)
-							return cli.NewExitError("", 0)
-						}
-					},
-				},
-				{
-					Name:  "bin",
-					Usage: "Fetches path of go executable",
-					Action: func(c *cli.Context) error {
-						if v, e := getGoBin(); e != nil {
-							return cli.NewExitError("Go executable not found", 1)
-						} else {
-							fmt.Println(v)
-							return cli.NewExitError("", 0)
-						}
-					},
-				},
-				{
-					Name:  "deps",
-					Usage: "Installs project dependencies",
-					Action: func(c *cli.Context) error {
-						cfg, err := ReadConfig(Path)
-						switch {
-						case err == nil:
-							d := cfg.GetValueName("deps")
-							for _, v := range d.([]string) {
-								fmt.Printf("Installing: " + v + " ... ")
-								if e := installGoDeps(v); e != nil {
-									fmt.Println(e)
-									return cli.NewExitError("Failed to install go dependency", 1)
-								} else {
-									fmt.Printf("Done!\n")
-								}
-							}
-							return cli.NewExitError("", 0)
-						default:
-							return cli.NewExitError("Can't read config: "+Path, 1)
-						}
-					},
-				},
-			},
-		},
-	}
+	registerCommands(app)
 
 	app.Action = func(c *cli.Context) error {
 		cli.ShowAppHelp(c)
 		return cli.NewExitError("", 0)
 	}
-	app.Run(os.Args)
+	_ = app.Run(os.Args)
 }
 
 func mainVersion() string {
@@ -206,10 +57,10 @@ func mainVersion() string {
 }
 
 func civersion() bool {
-	cfg, err := ReadConfig(Path)
+	cfg, err := readConfig(path)
 	switch {
 	case err == nil:
-		cv := cfg.GetValueName("civersion")
+		cv := cfg.getValueName("civersion")
 		if cv == apiversion {
 			return true
 		}
