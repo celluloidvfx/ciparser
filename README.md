@@ -1,7 +1,7 @@
 ciparser
 ====
 
-This app is part of the [Celluloid VFX](http://celluloid-vfx.com/) Continous Integration pipeline - a poor man travis-ci clone. We use this to build all our go microservices. This is a quite well working hack to help our developers not to reinvent everything always again. We're constantly changing things as we need it. Feel free to use - feedback is welcomed.
+This app is part of the [Celluloid VFX](http://celluloid-vfx.com/) Continuous Integration pipeline - a poor man travis-ci clone. We use this to build all our go microservices. This is a quite well working hack to help our developers not to reinvent everything always again. We're constantly changing things as we need it. Feel free to use - feedback is welcomed.
 
 How to use:
 ----
