@@ -3,14 +3,18 @@
 # App
 APP_NAME := $(shell ciparser get output)
 
+# Platform
+PLATFORM := $(shell ciparser get platform)
+
 # Musl
 MUSL := $(shell ciparser get musl)
 ifeq ($(MUSL), true)
-	COMPILER := '/usr/local/musl/bin/musl-gcc'
+	ifeq ($(PLATFORM), "linux")
+		COMPILER := $(shell which musl-gcc)
+	endif
 else
-ifeq ($(MUSL),)
-	COMPILER := '/usr/bin/gcc'
-endif
+
+	COMPILER := $(shell which gcc)
 endif
 
 LDFLAGS := $(shell ciparser ldflags)
@@ -18,7 +22,6 @@ BUILD_LDFLAGS := '$(LDFLAGS)'
 
 PWD := $(shell pwd)
 GOPATH := $(shell ciparser go path)
-HOST := $(shell ciparser get platform)
 
 all: gomake-all
 
@@ -45,7 +48,8 @@ test:
 build:
 	@echo "Running $@:"
 	@echo "Using Linker: $(COMPILER)"
-	@CC=$(COMPILER) /usr/bin/go build --ldflags $(BUILD_LDFLAGS) -o $(GOPATH)/bin/$(APP_NAME) && echo "Installing to $(GOPATH)/bin/$(APP_NAME)"
+	@echo "Building for: $(PLATFORM)"
+	@GOOS=$(PLATFORM) CC=$(COMPILER) /usr/bin/go build --ldflags $(BUILD_LDFLAGS) -o $(GOPATH)/bin/$(APP_NAME) && echo "Installing to $(GOPATH)/bin/$(APP_NAME)"
 
 compress:
 	@echo "Running $@:"
