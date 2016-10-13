@@ -35,19 +35,3 @@ func plattform() (string, error) {
 	}
 	return strings.TrimSpace(string(plattform)), nil
 }
-
-/*
-func bitOS() (string, error) {
-	// uname -sm
-	var (
-		bit []byte
-		e   error
-	)
-	cmdName := "uname"
-	cmdArgs := []string{"-m"}
-	if bit, e = exec.Command(cmdName, cmdArgs...).Output(); e != nil {
-		return "", e
-	}
-	return strings.TrimSpace(string(bit)), nil
-}
-*/
