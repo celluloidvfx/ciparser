@@ -14,11 +14,11 @@ build:
       - "github.com/ghodss/yaml"
     customvars:
         #- name: clientCert
-         # path: "/home/local/CELLULOIDVFX/johannesa/Desktop/dev/go/src/gitlab/johannesa/fsfilelinker/cell-ls-24.celluloidvfx.inc.crt"
+        #  path: "/home/joe/cell-ls-24.celluloidvfx.inc.crt"
         #- name: clientKey
-         # path: "/home/local/CELLULOIDVFX/johannesa/Desktop/dev/go/src/gitlab/johannesa/fsfilelinker/cell-ls-24.celluloidvfx.inc.key"
+        #  path: "/home/joe/cell-ls-24.celluloidvfx.inc.key"
         #- name: caCert
-         # path: "/home/local/CELLULOIDVFX/johannesa/Desktop/dev/go/src/gitlab/johannesa/fsfilelinker/ca.pem"
+        #  path: "/home/joe/ca.pem"
         #- name: serverList
-         # value: "cell-auth-01.celluloidvfx.inc:9999+cell-auth-02.celluloidvfx.inc:9999+cell-auth-03.celluloidvfx.inc:9999"
+        #  value: "server1.celluloidvfx.inc:9999+server2.celluloidvfx.inc:9999+server3.celluloidvfx.inc:9999"
 
