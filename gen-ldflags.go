@@ -30,6 +30,7 @@ import (
 func genLDFlags(cfg *ciConfig) string {
 	timestamp := time.Now().UTC().Format(time.RFC3339)
 	c := cfg.getValueName("cvars")
+	p := cfg.getValueName("platform")
 
 	var ldflagsStr string
 	ldflagsStr = "-X main.appVersion=" + timestamp + " "
@@ -57,7 +58,12 @@ func genLDFlags(cfg *ciConfig) string {
 
 	}
 
-	ldflagsStr = ldflagsStr + "-linkmode external -extldflags \"-static\" -s -w"
+	if p == "windows" {
+		ldflagsStr = ldflagsStr + "-extldflags \"-static\" -s -w"
+	} else {
+		ldflagsStr = ldflagsStr + "-linkmode external -extldflags \"-static\" -s -w"
+	}
+
 	return ldflagsStr
 }
 func readFileContent(v customvars) string {
