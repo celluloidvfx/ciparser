@@ -6,17 +6,17 @@ APP_NAME := $(shell ciparser get output)
 # Platform
 PLATFORM := $(shell ciparser get platform)
 
+# Arch
+ARCH := $(shell ciparser get arch)
+
 # Musl
 MUSL := $(shell ciparser get musl)
-ifeq ($(MUSL), true)
-	ifeq ($(PLATFORM), "linux")
-		COMPILER := $(shell which musl-gcc)
-	endif
-else
 
-	COMPILER := $(shell which gcc)
-endif
 
+# Upx
+UPX := $(shell ciparser get upx)
+
+# Ldflags
 LDFLAGS := $(shell ciparser ldflags)
 BUILD_LDFLAGS := '$(LDFLAGS)'
 
@@ -25,7 +25,36 @@ GOPATH := $(shell ciparser go path)
 
 all: gomake-all
 
+gomake-all:
+ifeq ($(UPX), true)
 gomake-all: getdeps verifiers build compress
+else
+gomake-all: getdeps verifiers build
+endif
+
+build:
+	@echo "Running $@:"
+	@echo "Building for: $(PLATFORM)"
+	@echo "Building for: $(ARCH)"
+ifeq ($(MUSL), true)
+MUSLPATH := $(shell which musl-gcc)
+build: musl-build
+else
+build: gobuild
+endif
+
+musl-build:
+	@echo "Using Musl: $(MUSLPATH)"
+	@GOOS=$(PLATFORM) GOARCH=$(ARCH) CC=$(MUSLPATH) /usr/bin/go build --ldflags $(BUILD_LDFLAGS) -o $(GOPATH)/bin/$(APP_NAME) && echo "Installing to $(GOPATH)/bin/$(APP_NAME)"
+
+gobuild:
+	@echo "Not using Musl"
+	@GOOS=$(PLATFORM) GOARCH=$(ARCH) /usr/bin/go build --ldflags $(BUILD_LDFLAGS) -o $(GOPATH)/bin/$(APP_NAME) && echo "Installing to $(GOPATH)/bin/$(APP_NAME)"
+
+compress:
+	@echo "Running $@:"
+	@upx --brute $(GOPATH)/bin/$(APP_NAME) && echo "Compressed to $(GOPATH)/bin/$(APP_NAME)"
+
 
 getdeps:
 	@echo "Running $@:"
@@ -44,13 +73,3 @@ spelling:
 test:
 	@echo "Running $@:"
 	@/usr/bin/go test --cover ./...
-
-build:
-	@echo "Running $@:"
-	@echo "Using Linker: $(COMPILER)"
-	@echo "Building for: $(PLATFORM)"
-	@GOOS=$(PLATFORM) CC=$(COMPILER) /usr/bin/go build --ldflags $(BUILD_LDFLAGS) -o $(GOPATH)/bin/$(APP_NAME) && echo "Installing to $(GOPATH)/bin/$(APP_NAME)"
-
-compress:
-	@echo "Running $@:"
-	@upx --brute $(GOPATH)/bin/$(APP_NAME) && echo "Compressed to $(GOPATH)/bin/$(APP_NAME)"

@@ -9,6 +9,7 @@ build:
     arch: amd64
     platform: linux
     musl: true
+    upx: true
     deps:
       - "github.com/urfave/cli"
       - "github.com/ghodss/yaml"

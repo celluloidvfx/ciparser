@@ -36,6 +36,7 @@ type build struct {
 	Arch      string       `json:"arch"`
 	Goos      string       `json:"platform"`
 	Musl      bool         `json:"musl"`
+	Upx       bool         `json:"upx"`
 	Deps      []string     `json:"deps"`
 	Cvars     []customvars `json:"customvars"`
 }
@@ -46,7 +47,7 @@ type customvars struct {
 	Value string `json:"value"`
 }
 
-var getTasks = []string{"name", "civersion", "active", "output", "language", "goversion", "musl"}
+var getTasks = []string{"name", "civersion", "active", "output", "language", "goversion", "musl", "arch"}
 
 func readConfig(path string) (*ciConfig, error) {
 	var ci *ciConfig
@@ -80,8 +81,16 @@ func (c ciConfig) getValueName(value string) interface{} {
 		return c.Build.Goversion
 	case value == "platform":
 		return c.Build.Goos
+	case value == "arch":
+		return c.Build.Arch
 	case value == "musl":
 		if c.Build.Musl {
+			return "true"
+		} else {
+			return "false"
+		}
+	case value == "upx":
+		if c.Build.Upx {
 			return "true"
 		} else {
 			return "false"
