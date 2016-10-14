@@ -1,4 +1,4 @@
-# Ciparser
+# Ciparser [![Go Report Card](https://goreportcard.com/badge/github.com/celluloidvfx/ciparser)](https://goreportcard.com/report/github.com/celluloidvfx/ciparser)
 
 This app is part of the [Celluloid VFX](http://celluloid-vfx.com/) Continuous Integration pipeline - a poor man's travis-ci clone. We use ciparser to build all our Go (golang) microservices and apps. Ciparser is a quite well working hack, to help our developers not to reinvent the wheel again. We're constantly adding things as we need it. Feel free to use - feedback and pull requests are absolutely welcomed.
 
