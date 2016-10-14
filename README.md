@@ -1,32 +1,68 @@
-ciparser
-====
+# Ciparser
 
-This app is part of the [Celluloid VFX](http://celluloid-vfx.com/) Continuous Integration pipeline - a poor man travis-ci clone. We use this to build all our go microservices. This is a quite well working hack to help our developers not to reinvent the wheel again. We're constantly changing things as we need it. Feel free to use - feedback is absolutely welcomed.
+This app is part of the [Celluloid VFX](http://celluloid-vfx.com/) Continuous Integration pipeline - a poor man's travis-ci clone. We use ciparser to build all our Go (golang) microservices and apps. Ciparser is a quite well working hack, to help our developers not to reinvent the wheel again. We're constantly adding things as we need it. Feel free to use - feedback and pull requests are absolutely welcomed.
 
-What does this solve at Celluloid's:
----
+## Core Features
 
-1. Unique build entrypoint for all our go code: just write *make*. This is useful if you trigger build jobs via git hooks. The developer has full control about the job behavior, without the need to change the build pipeline.
+1. Unique build entry point for all our Go code: just write *make*.
+2. The developer has full control about the build behavior, without the need to configure the build pipeline.
 2. Automatic compile flags generation for versioning and custom flags.
-3. Single configuration file
-4. [musl-gcc](http://www.musl-libc.org/) builds
-5. [upx](https://upx.github.io/) compression
+3. Single configuration file for all platforms
+4. Switchable [musl-gcc](http://www.musl-libc.org/) integration
+5. Switchable [upx](https://upx.github.io/) compression
+6. Go dependency management
 5. Extendable for all kind of parameters, platforms etc.
 
+## What does this solve at Celluloid's:
 
-How to use:
-----
+We have an in-house developed CI/CD pipeline at Celluloid. Ciparser is used to read the cell-ci.yaml file and it provides values for *make* on build time. It also gathers necessary build environment information. Cell-ci.yaml and the Makefile are part of the source code and in git (think .travis.yml).
 
-1. Build this go app manually and put it in your GOPATH/bin.
-2. Copy the Makefile and cell-ci.yaml as template to your newly created git folder.
-3. Edit the cell-ci. yaml file to your needs
-4. Type "make"
-5. Sit back and watch your machine build
+##  Installation
 
+### Dependencies
 
-Annotated cell-ci.yaml
-----
-The cell-ci.yaml is the configuration file for your project build.
+- [musl-gcc](http://www.musl-libc.org/)
+- [upx](https://upx.github.io/)
+- [Gnu make](https://www.gnu.org/software/make/)
+- [GCC](https://gcc.gnu.org/)
+
+On Debian based systems use
+```
+sudo get update && apt-get install build-essential make upx-ucl musl
+```
+
+### Initial Installation
+```
+git clone https://github.com/celluloidvfx/ciparser
+cd ciparser
+go build *.go
+cp ciparser $(GOPATH)/bin/ciparser
+ciparser --version
+```
+
+(Optional) Once ciparser is build and in your path you can use it to build it a second time with ciparser itself. Then you get a proper output on *ciparser --version*.
+
+```
+git clone https://github.com/celluloidvfx/ciparser
+cd ciparser
+make
+ciparser --version
+```
+
+## How to use:
+
+### Five simple steps
+
+1. Build ciparser and put it in your $GOPATH/bin as described above.
+2. Copy the Makefile and cell-ci.yaml from the ciparser source repository as template to your newly created git project.
+3. Open an editor and adjust the cell-ci.yaml to your needs. The Makefile normally shouldn't be touched.
+4. Write your Go code.
+5. Then simply navigate to your folder and type *make* or trigger this with a githook etc.
+6. Sit back and watch make building your app based on your values provided in the cell-ci.yaml
+
+### Annotated cell-ci.yaml
+
+The cell-ci.yaml is the configuration file for your project build and should be in your source tree.
 
 ```
 name: yourapp                                  # name of app
@@ -51,18 +87,81 @@ build:
          value: "Something_I_need_to_inject_into_my_app"
 ```
 
-Customvars and git hashes are base64 encoded and added as ldflags to your app in compile time. The prefix app is added to the var name.
-In our above cell-ci.yaml the var *clientCert* and *domainName* will be available in your app as *appClientCert* and *appDomainName*. (You have to declare them of course in your code.)
-In the example content of *appClientCert* will be the read from /home/joe/cell-ls-24.celluloidvfx.inc.crt (base64 encoded), *appDomainName* has the value: Something_I_need_to_inject_into_my_app.
+### Environment Variables
 
-In your code you have to declare the vars like this
+*Make* will read your makefile from your source tree. It uses ciparser to fetch several environmental information on compile time and encapsulates them as ldflags.
+
+These "fixed" variable need to be declared in your app (i.e. main.go):
+
 ```
+#Git information
 var appVersion, appReleaseTag, appShortCommitID, appBranch string
+```
+
+We use a [cli library](https://github.com/urfave/cli) at Celluloid and you could display the versioning like this:
+
+```
+...
+app.Version = mainVersion()
+...
+func mainVersion() string {
+    s := ""
+    s = s + appVersion + "\n"
+    s = s + "Release-Tag: " + appReleaseTag + "\n"
+    s = s + "Commit-ID: " + appShortCommitID + "\n"
+    s = s + "Branch: " + appBranch + "\n"
+    s = s + "CI API version: " + apiversion + "\n"
+    return s
+}
+```
+
+### Custom Variables
+
+The Custom Vars functionality gives you the possibility to inject arbitrary information with ldflags to your build on compile time. There are two possible ways to declare a variable.
+
+1. Value based Variables
+In the cell-ci.yaml you can define a name and a value.
+```
+       - name: DomainName
+         value: "Something_I_need_to_inject_into_my_app"
+```
+
+In this example the var will be available as *appDomainName*. The prefix app is added to the var name.
+
+2. Path based Variable
+In the cell-ci.yaml you can define a name and a path.
+```
+       - name: ClientCert
+         path: "/path/to/your/file/you/need/to/inject"
+```
+
+In this example the var will be available as *appClientCert*. The prefix app is added to the var name. The difference to the value based vars is that the *content* of the path will be read and injected.
+
+To do this savely all custom variables are base64 encoded and need to be decoded in runtime before use. This adds computation time to you app on startup.
+
+In your code you have to declare the vars like this:
+```
 var appClientCert, appDomainName string
 ```
 
-RUNNING THE APP
-==================
+and decode them like this:
+```
+import (
+    b64 "encoding/base64"
+)
+...
+moo := string(decodeCompileFlags(appClientCert))
+...
+func decodeCompileFlags(enc string) []byte {
+    d, err := b64.StdEncoding.DecodeString(enc)
+    if err != nil {
+        log.Fatal(err)
+    }
+    return d
+}
+```
+
+## Running the app
 
 ciparser will be used by **make** (see Makefile) i.e:
 
@@ -74,8 +173,8 @@ for more information see:
 $(GOPATH)/bin/ciparser --help
 ```
 
-TODO
-----
+## Todo
+
 
 - implement more cross compilation darwin/bsd
 - tidy up
@@ -89,13 +188,12 @@ TODO
 - go vendor setup
 - expose more compiler options
 - deployment options
-- generate yaml files
+- autogenerate yaml files
 - ....
 
 If this is useful for you please add features and file a pull request.
 
-License
----
+## License
 
 ```
 Johannes Amorosa, (C) 2016
